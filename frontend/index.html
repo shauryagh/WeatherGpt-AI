@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>WeatherGPT — Weather, in your language</title>
+<meta name="description" content="Conversational weather forecasts, alerts and advisories in your own language." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F5EE;
+    --surface:#FFFFFF;
+    --surface-2:#EAF0E6;
+    --ink:#152325;
+    --ink-soft:#51625F;
+    --ink-faint:#8B9A94;
+    --primary:#1D4E5F;
+    --primary-dark:#0F343F;
+    --primary-tint:#E3EEEC;
+    --accent:#E39A3B;
+    --accent-dark:#B87A22;
+    --danger:#C1443C;
+    --danger-tint:#FBE7E4;
+    --good:#3F8F5F;
+    --good-tint:#E6F2E9;
+    --border:#DEE5D8;
+    --radius-lg:22px;
+    --radius-md:14px;
+    --radius-sm:9px;
+    --shadow:0 1px 2px rgba(15,52,63,.06), 0 10px 30px -14px rgba(15,52,63,.22);
+    --font-display:'Fraunces', serif;
+    --font-body:'Manrope', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    justify-content:center;
+    min-height:100%;
+  }
+  button{font-family:inherit;}
+  input{font-family:inherit;}
+  :focus-visible{outline:2.5px solid var(--primary); outline-offset:2px;}
+
+  /* ---------- App shell: phone-card on desktop, full-bleed on mobile ---------- */
+  #app{
+    width:100%;
+    max-width:460px;
+    min-height:100vh;
+    background:var(--surface);
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  @media (min-width:560px){
+    body{ padding:28px 12px; align-items:flex-start; }
+    #app{
+      min-height:calc(100vh - 56px);
+      border-radius:28px;
+      box-shadow:0 30px 60px -25px rgba(15,52,63,.35), 0 1px 0 rgba(15,52,63,.06);
+      border:1px solid var(--border);
+    }
+  }
+
+  .screen{ display:none; flex-direction:column; min-height:100%; flex:1; }
+  .screen.active{ display:flex; }
+
+  /* ---------- Onboarding shared ---------- */
+  .onboard{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding:38px 26px 30px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:34px;
+  }
+  .brand-mark{
+    width:38px;height:38px;border-radius:11px;
+    background:var(--primary);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-mark svg{width:21px;height:21px;}
+  .brand-name{ font-family:var(--font-display); font-weight:600; font-size:19px; letter-spacing:.2px;}
+
+  .onboard h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:30px;
+    line-height:1.18;
+    margin:0 0 10px;
+    max-width:22ch;
+  }
+  .onboard p.sub{
+    color:var(--ink-soft);
+    font-size:15px;
+    line-height:1.55;
+    margin:0 0 26px;
+    max-width:34ch;
+  }
+
+  .lang-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:8px;
+  }
+  .lang-btn{
+    text-align:left;
+    padding:14px 14px;
+    border-radius:var(--radius-md);
+    border:1.5px solid var(--border);
+    background:var(--surface);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .lang-btn:hover{ border-color:var(--primary); }
+  .lang-btn:active{ transform:scale(.98); }
+  .lang-btn.selected{ border-color:var(--primary); background:var(--primary-tint); }
+  .lang-native{ display:block; font-family:var(--font-display); font-size:17px; font-weight:600; }
+  .lang-english{ display:block; font-size:12px; color:var(--ink-faint); margin-top:1px; }
+
+  .spacer{ flex:1; }
+
+  .btn-primary{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%;
+    padding:15px 18px;
+    border-radius:999px;
+    border:none;
+    background:var(--primary);
+    color:#fff;
+    font-size:15.5px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .btn-primary:hover{ background:var(--primary-dark); }
+  .btn-primary:active{ transform:scale(.985); }
+  .btn-primary:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-primary svg{ width:17px;height:17px; flex-shrink:0; }
+
+  .btn-secondary{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%;
+    padding:14px 18px;
+    border-radius:999px;
+    border:1.5px solid var(--border);
+    background:transparent;
+    color:var(--ink);
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:10px;
+  }
+  .btn-secondary:hover{ border-color:var(--primary); }
+
+  .divider-row{
+    display:flex; align-items:center; gap:12px;
+    color:var(--ink-faint); font-size:12.5px;
+    margin:20px 0;
+  }
+  .divider-row::before,.divider-row::after{
+    content:''; flex:1; height:1px; background:var(--border);
+  }
+
+  .field-row{
+    display:flex; gap:8px;
+    margin-bottom:6px;
+  }
+  .text-field{
+    flex:1;
+    padding:14px 16px;
+    border-radius:999px;
+    border:1.5px solid var(--border);
+    font-size:15px;
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+  .text-field:focus{ background:var(--surface); }
+
+  .status-line{
+    font-size:13px; color:var(--ink-soft);
+    display:flex; align-items:center; gap:8px;
+    min-height:18px; margin-top:10px;
+  }
+  .status-line.error{ color:var(--danger); }
+  .dot-pulse{
+    width:7px;height:7px;border-radius:50%;background:var(--accent);
+    animation:pulse 1s infinite ease-in-out;
+  }
+  @keyframes pulse{ 0%,100%{opacity:.25;} 50%{opacity:1;} }
+
+  .loc-suggestion{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 16px; border-radius:var(--radius-md);
+    background:var(--good-tint); border:1px solid #CFE6D6;
+    margin-top:14px; font-size:14px;
+  }
+  .loc-suggestion b{ font-family:var(--font-display); }
+
+  /* ---------- Dashboard ---------- */
+  #screen-dashboard{ background:var(--bg); }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 18px 10px;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:5;
+  }
+  .topbar-left{ display:flex; align-items:center; gap:9px; min-width:0; }
+  .topbar .brand-mark{ width:30px;height:30px;border-radius:8px; }
+  .topbar .brand-mark svg{ width:16px;height:16px; }
+  .pill-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    border:1px solid var(--border); background:var(--surface-2);
+    border-radius:999px; padding:6px 11px 6px 10px;
+    font-size:12.5px; font-weight:700; color:var(--ink);
+    cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:150px;
+  }
+  .pill-btn svg{ width:13px;height:13px; flex-shrink:0; color:var(--ink-soft); }
+  .topbar-right{ display:flex; gap:8px; flex-shrink:0; }
+  .icon-btn{
+    width:34px;height:34px; border-radius:50%;
+    border:1px solid var(--border); background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+  }
+  .icon-btn svg{ width:16px;height:16px; }
+
+  .dash-body{ padding:16px 18px 100px; overflow-y:auto; flex:1; }
+
+  .alert-banner{
+    display:none;
+    gap:10px;
+    padding:13px 14px;
+    border-radius:var(--radius-md);
+    background:var(--danger-tint);
+    border:1px solid #F0C4BE;
+    margin-bottom:14px;
+    cursor:pointer;
+  }
+  .alert-banner.show{ display:flex; }
+  .alert-banner .ic{
+    width:30px;height:30px;border-radius:50%;background:var(--danger);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;
+  }
+  .alert-banner .ic svg{ width:16px;height:16px; }
+  .alert-banner b{ display:block; font-size:14px; color:#7A2A24; }
+  .alert-banner span{ display:block; font-size:12.5px; color:#8C3A32; margin-top:1px; }
+
+  .hero-card{
+    background:linear-gradient(160deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius:var(--radius-lg);
+    color:#fff;
+    padding:22px 22px 20px;
+    position:relative;
+    overflow:hidden;
+    margin-bottom:16px;
+  }
+  .hero-card::after{
+    content:'';
+    position:absolute; right:-40px; top:-40px;
+    width:160px; height:160px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 70%);
+  }
+  .hero-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .hero-loc{ font-size:13.5px; font-weight:700; opacity:.85; display:flex; align-items:center; gap:5px;}
+  .hero-cond{ font-size:13.5px; opacity:.85; margin-top:2px; text-transform:capitalize; }
+  .hero-temp-row{ display:flex; align-items:flex-end; gap:14px; margin-top:14px; }
+  .hero-temp{ font-family:var(--font-mono); font-size:58px; font-weight:600; line-height:1; letter-spacing:-1px;}
+  .hero-temp sup{ font-size:24px; font-weight:500; top:-.5em; }
+  .hero-icon{ width:54px;height:54px; margin-bottom:4px; }
+  .hero-meta{ display:flex; gap:18px; margin-top:16px; }
+  .hero-meta-item{ font-size:12.5px; opacity:.9; }
+  .hero-meta-item b{ display:block; font-family:var(--font-mono); font-size:15px; font-weight:600; margin-top:2px; }
+
+  .section-label{
+    font-family:var(--font-display); font-weight:600; font-size:15.5px;
+    margin:22px 0 10px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .section-label span.note{ font-family:var(--font-body); font-weight:600; font-size:11.5px; color:var(--ink-faint); }
+
+  .forecast-strip{
+    display:flex; gap:9px; overflow-x:auto; padding-bottom:4px; margin:0 -2px;
+    scrollbar-width:none;
+  }
+  .forecast-strip::-webkit-scrollbar{ display:none; }
+  .forecast-card{
+    flex-shrink:0; width:76px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:12px 8px; text-align:center;
+  }
+  .forecast-day{ font-size:11.5px; font-weight:700; color:var(--ink-soft); }
+  .forecast-ic{ font-size:20px; margin:8px 0; }
+  .forecast-temp{ font-family:var(--font-mono); font-size:14.5px; font-weight:600; }
+  .forecast-pop{ font-size:10.5px; color:var(--primary); margin-top:4px; font-weight:700; }
+
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .chip{
+    padding:10px 14px; border-radius:999px; background:var(--surface-2);
+    border:1px solid var(--border); font-size:13px; font-weight:600;
+    cursor:pointer; color:var(--ink);
+  }
+  .chip:hover{ border-color:var(--primary); }
+
+  .toll-card{
+    margin-top:22px;
+    background:var(--surface-2);
+    border:1px dashed #C6D4C0;
+    border-radius:var(--radius-lg);
+    padding:18px;
+  }
+  .toll-card .row{ display:flex; align-items:center; gap:12px; }
+  .toll-icon{
+    width:42px;height:42px;border-radius:12px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff;
+  }
+  .toll-icon svg{ width:20px;height:20px; }
+  .toll-number{ font-family:var(--font-mono); font-size:19px; font-weight:600; color:var(--primary-dark); letter-spacing:.3px; }
+  .toll-label{ font-size:12px; color:var(--ink-soft); margin-top:1px;}
+  .toll-desc{ font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin:12px 0 12px; }
+
+  .data-note{
+    text-align:center; font-size:11.5px; color:var(--ink-faint); margin-top:18px;
+  }
+
+  .fab{
+    position:absolute; right:18px; bottom:22px;
+    width:58px;height:58px;border-radius:50%;
+    background:var(--accent); color:#fff; border:none;
+    box-shadow:0 12px 24px -8px rgba(227,154,59,.6);
+    display:flex; align-items:center;justify-content:center;
+    cursor:pointer; z-index:6;
+  }
+  .fab svg{ width:24px;height:24px; }
+
+  /* ---------- Chat overlay ---------- */
+  .overlay{
+    position:absolute; inset:0; background:var(--bg);
+    display:flex; flex-direction:column;
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.22,.9,.35,1);
+    z-index:20;
+  }
+  .overlay.open{ transform:translateY(0); }
+  .ov-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 16px; background:var(--surface); border-bottom:1px solid var(--border);
+  }
+  .ov-title{ display:flex; align-items:center; gap:10px; }
+  .ov-title-text{ font-family:var(--font-display); font-weight:600; font-size:16.5px; }
+  .ov-title-sub{ font-size:11.5px; color:var(--good); font-weight:700; display:flex; align-items:center; gap:5px; }
+  .ov-title-sub .live-dot{ width:6px;height:6px;border-radius:50%;background:var(--good); }
+  .ov-actions{ display:flex; gap:8px; }
+
+  .chat-scroll{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .msg{ max-width:82%; padding:11px 14px; border-radius:16px; font-size:14.5px; line-height:1.48; }
+  .msg.user{ align-self:flex-end; background:var(--primary); color:#fff; border-bottom-right-radius:5px; }
+  .msg.bot{ align-self:flex-start; background:var(--surface); border:1px solid var(--border); border-bottom-left-radius:5px; }
+  .msg.bot.typing{ display:flex; gap:4px; padding:14px 16px; }
+  .typing span{ width:6px;height:6px;border-radius:50%; background:var(--ink-faint); animation:blink 1.3s infinite; }
+  .typing span:nth-child(2){ animation-delay:.18s; }
+  .typing span:nth-child(3){ animation-delay:.36s; }
+  @keyframes blink{ 0%,80%,100%{opacity:.25;} 40%{opacity:1;} }
+
+  .chat-inputbar{
+    display:flex; align-items:center; gap:8px;
+    padding:12px 14px; background:var(--surface); border-top:1px solid var(--border);
+  }
+  .mic-btn{
+    width:42px;height:42px;border-radius:50%; flex-shrink:0;
+    border:1.5px solid var(--border); background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center; cursor:pointer;
+  }
+  .mic-btn.on{ background:var(--danger); border-color:var(--danger); color:#fff; animation:mic-pulse 1.2s infinite; }
+  @keyframes mic-pulse{ 0%{box-shadow:0 0 0 0 rgba(193,68,60,.4);} 70%{box-shadow:0 0 0 10px rgba(193,68,60,0);} 100%{box-shadow:0 0 0 0 rgba(193,68,60,0);} }
+  .mic-btn svg{ width:18px;height:18px; }
+  .chat-input{
+    flex:1; border:1.5px solid var(--border); border-radius:999px;
+    padding:11px 16px; font-size:14.5px; background:var(--surface-2);
+  }
+  .send-btn{
+    width:42px;height:42px;border-radius:50%; flex-shrink:0; border:none;
+    background:var(--primary); color:#fff; display:flex;align-items:center;justify-content:center; cursor:pointer;
+  }
+  .send-btn:disabled{ opacity:.4; }
+  .send-btn svg{ width:17px;height:17px; }
+
+  /* ---------- Call overlay ---------- */
+  #overlay-call{ background:var(--primary-dark); color:#fff; align-items:center; }
+  .call-top{ width:100%; display:flex; justify-content:space-between; align-items:center; padding:18px; }
+  .call-top .icon-btn{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.2); color:#fff; }
+  .call-body{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; }
+  .call-badge{ font-size:12.5px; letter-spacing:.3px; opacity:.7; margin-bottom:8px; }
+  .call-status{ font-family:var(--font-display); font-size:22px; font-weight:600; margin-bottom:6px; }
+  .call-sub{ font-size:13.5px; opacity:.75; max-width:26ch; line-height:1.5; }
+  .call-orb-wrap{ margin:40px 0; position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center; }
+  .call-orb-ring{ position:absolute; inset:0; border-radius:50%; border:1.5px solid rgba(255,255,255,.18); }
+  .call-orb-ring.r2{ inset:-16px; }
+  .call-orb{
+    width:110px;height:110px;border-radius:50%;
+    background:var(--accent); display:flex;align-items:center;justify-content:center;
+    cursor:pointer; border:none; color:#fff;
+    transition:transform .15s ease;
+  }
+  .call-orb.listening{ animation:orb-pulse 1.4s infinite; }
+  .call-orb:active{ transform:scale(.95); }
+  @keyframes orb-pulse{ 0%{box-shadow:0 0 0 0 rgba(227,154,59,.55);} 70%{box-shadow:0 0 0 22px rgba(227,154,59,0);} 100%{box-shadow:0 0 0 0 rgba(227,154,59,0);} }
+  .call-orb svg{ width:38px;height:38px; }
+  .call-transcript{
+    min-height:44px; font-size:14.5px; opacity:.9; max-width:30ch; margin-top:6px; line-height:1.5;
+  }
+  .call-bottom{ width:100%; padding:26px 24px 34px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .call-tollnum{ font-family:var(--font-mono); font-size:15px; opacity:.8; }
+  .end-call-btn{
+    width:56px;height:56px;border-radius:50%; background:var(--danger); border:none; color:#fff;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .end-call-btn svg{ width:22px;height:22px; }
+
+  /* ---------- Settings sheet ---------- */
+  .sheet-backdrop{
+    position:absolute; inset:0; background:rgba(15,35,37,.42);
+    display:none; align-items:flex-end; z-index:30;
+  }
+  .sheet-backdrop.open{ display:flex; }
+  .sheet{
+    width:100%; background:var(--surface); border-radius:22px 22px 0 0;
+    padding:20px 20px 26px; max-height:80%; overflow-y:auto;
+  }
+  .sheet-handle{ width:36px; height:4px; border-radius:2px; background:var(--border); margin:0 auto 16px; }
+  .sheet h3{ font-family:var(--font-display); font-size:18px; margin:0 0 14px; }
+
+  .hidden{ display:none !important; }
+  .visually-hidden{ position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SCREEN 1: LANGUAGE ============ -->
+  <div class="screen active" id="screen-language">
+    <div class="onboard">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 15a4 4 0 0 1 .7-7.94 5 5 0 0 1 9.6-1.3A4.5 4.5 0 0 1 17.5 15H6Z" stroke="white" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="brand-name">WeatherGPT</div>
+      </div>
+      <h1 id="lang-title">Choose your language</h1>
+      <p class="sub" id="lang-sub">Forecasts, alerts and answers to your questions — in the language you speak.</p>
+      <div class="lang-grid" id="lang-grid"></div>
+      <div class="spacer" style="min-height:18px;"></div>
+      <button class="btn-primary" id="btn-lang-continue" disabled>
+        <span id="btn-lang-continue-text">Continue</span>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 2: LOCATION ============ -->
+  <div class="screen" id="screen-location">
+    <div class="onboard">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 15a4 4 0 0 1 .7-7.94 5 5 0 0 1 9.6-1.3A4.5 4.5 0 0 1 17.5 15H6Z" stroke="white" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="brand-name">WeatherGPT</div>
+      </div>
+      <h1 id="loc-title">Where should we look?</h1>
+      <p class="sub" id="loc-sub">Share your location for instant local forecasts, or type in a place.</p>
+
+      <button class="btn-primary" id="btn-use-location">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.4" stroke="currentColor" stroke-width="2"/></svg>
+        <span id="btn-use-location-text">Use my current location</span>
+      </button>
+
+      <div class="divider-row" id="loc-divider">or</div>
+
+      <div class="field-row">
+        <input class="text-field" id="input-city" type="text" placeholder="Enter a city or village" />
+      </div>
+      <button class="btn-secondary" id="btn-find-city" style="margin-top:4px;">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span id="btn-find-city-text">Find location</span>
+      </button>
+
+      <div class="status-line" id="loc-status"></div>
+      <div class="loc-suggestion hidden" id="loc-suggestion"></div>
+
+      <div class="spacer"></div>
+      <button class="btn-primary hidden" id="btn-loc-continue">
+        <span id="btn-loc-continue-text">Continue</span>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 3: DASHBOARD ============ -->
+  <div class="screen" id="screen-dashboard">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 15a4 4 0 0 1 .7-7.94 5 5 0 0 1 9.6-1.3A4.5 4.5 0 0 1 17.5 15H6Z" stroke="white" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </div>
+        <button class="pill-btn" id="pill-location" title="Change location">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2" stroke="currentColor" stroke-width="2"/></svg>
+          <span id="pill-location-text">—</span>
+        </button>
+      </div>
+      <div class="topbar-right">
+        <button class="pill-btn" id="pill-lang" title="Change language">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span id="pill-lang-text">EN</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="dash-body" id="dash-body">
+      <div class="alert-banner" id="alert-banner">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.86l-8.2 14.2A1.5 1.5 0 0 0 3.4 20.4h17.2a1.5 1.5 0 0 0 1.3-2.34l-8.2-14.2a1.5 1.5 0 0 0-2.6 0Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+        <div>
+          <b id="alert-title">Weather alert active</b>
+          <span id="alert-sub">Tap to see details in the chat</span>
+        </div>
+      </div>
+
+      <div class="hero-card" id="hero-card">
+        <div class="hero-top">
+          <div>
+            <div class="hero-loc" id="hero-loc">
+              <svg viewBox="0 0 24 24" fill="none" style="width:12px;height:12px;"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+              <span>—</span>
+            </div>
+            <div class="hero-cond" id="hero-cond">Loading current conditions…</div>
+          </div>
+          <div class="hero-icon" id="hero-icon">⛅</div>
+        </div>
+        <div class="hero-temp-row">
+          <div class="hero-temp" id="hero-temp">--<sup>°C</sup></div>
+        </div>
+        <div class="hero-meta">
+          <div class="hero-meta-item" id="hero-feels">Feels like<b>--°</b></div>
+          <div class="hero-meta-item" id="hero-humidity">Humidity<b>--%</b></div>
+          <div class="hero-meta-item" id="hero-wind">Wind<b>-- m/s</b></div>
+        </div>
+      </div>
+
+      <div class="section-label"><span id="label-forecast">5-day forecast</span></div>
+      <div class="forecast-strip" id="forecast-strip"></div>
+
+      <div class="section-label"><span id="label-ask">Ask WeatherGPT</span></div>
+      <div class="chip-row" id="chip-row"></div>
+
+      <div class="toll-card">
+        <div class="row">
+          <div class="toll-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <div>
+            <div class="toll-number">1800-XXX-XXXX</div>
+            <div class="toll-label" id="toll-label-line">Toll-free · available 24×7</div>
+          </div>
+        </div>
+        <div class="toll-desc" id="toll-desc">No smartphone or data needed — call this number from any phone for weather updates and alerts spoken in your language.</div>
+        <button class="btn-secondary" id="btn-call-demo" style="margin-top:0;">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 19a7 7 0 0 0 7-7M12 19a7 7 0 0 1-7-7M12 19v3m-4 0h8M8 9v3a4 4 0 0 0 8 0V9a4 4 0 0 0-8 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span id="btn-call-demo-text">Try a voice call in this browser</span>
+        </button>
+      </div>
+
+      <div class="data-note" id="data-note"></div>
+    </div>
+
+    <button class="fab" id="fab-chat" aria-label="Open chat">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 18.5V6.8C4 5.8 4.8 5 5.8 5h12.4c1 0 1.8.8 1.8 1.8v8.4c0 1-.8 1.8-1.8 1.8H8l-4 3.5Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/></svg>
+    </button>
+
+    <!-- ---- Chat overlay ---- -->
+    <div class="overlay" id="overlay-chat">
+      <div class="ov-header">
+        <div class="ov-title">
+          <div class="brand-mark" style="width:32px;height:32px;border-radius:9px;">
+            <svg viewBox="0 0 24 24" fill="none" style="width:17px;height:17px;"><path d="M6 15a4 4 0 0 1 .7-7.94 5 5 0 0 1 9.6-1.3A4.5 4.5 0 0 1 17.5 15H6Z" stroke="white" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <div class="ov-title-text">WeatherGPT</div>
+            <div class="ov-title-sub"><span class="live-dot"></span><span id="chat-live-text">Live · your location</span></div>
+          </div>
+        </div>
+        <div class="ov-actions">
+          <button class="icon-btn" id="btn-speaker" title="Read replies aloud">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-close-chat" title="Close">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="chat-scroll" id="chat-scroll"></div>
+      <div class="chat-inputbar">
+        <button class="mic-btn" id="btn-mic" title="Speak your question">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <input class="chat-input" id="chat-input" type="text" placeholder="Type your question…" />
+        <button class="send-btn" id="btn-send">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6.5 8L20 20 4 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ---- Call overlay ---- -->
+    <div class="overlay" id="overlay-call">
+      <div class="call-top">
+        <div style="width:34px;"></div>
+        <div class="call-badge" id="call-badge">VOICE DEMO</div>
+        <div style="width:34px;"></div>
+      </div>
+      <div class="call-body">
+        <div class="call-status" id="call-status">Connecting…</div>
+        <div class="call-sub" id="call-sub">This simulates what a caller on the toll-free line hears.</div>
+        <div class="call-orb-wrap">
+          <div class="call-orb-ring"></div>
+          <div class="call-orb-ring r2"></div>
+          <button class="call-orb" id="call-orb">
+            <svg viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="white" stroke-width="1.8"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="call-transcript" id="call-transcript"></div>
+      </div>
+      <div class="call-bottom">
+        <div class="call-tollnum" id="call-tollnum">Real callers dial 1800-XXX-XXXX</div>
+        <button class="end-call-btn" id="btn-end-call" title="End call">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5c1.8 1.6 4.6-.4 6-1.7.3-.3.8-.3 1.1 0 .7.6 1.9.6 2.6 0 1.4-1.3 4.2-3.3 6-1.7.5.4.5 2.6-1.3 3.9-4.4 3.3-12.7 3.3-17.1 0-1.8-1.3-1.8-3.5-1.3-3.9Z" fill="white"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ---- Settings sheet (language / location switch from dashboard) ---- -->
+    <div class="sheet-backdrop" id="sheet-backdrop">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <h3 id="sheet-title">Settings</h3>
+        <div id="sheet-content"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     CONFIG — point this at your running FastAPI backend.
+     Matches app/main.py + app/routers/{chat,weather}.py
+  ========================================================= */
+  var API_BASE = window.WEATHERGPT_API_BASE || "http://localhost:8000";
+
+  /* =========================================================
+     i18n — UI chrome strings. The chat REPLIES themselves are
+     generated server-side by the LLM in the chosen language
+     (see llm_service.py) — this dictionary only covers the
+     interface around it.
+  ========================================================= */
+  var LANGS = [
+    {code:"en", native:"English",  english:"English"},
+    {code:"hi", native:"हिन्दी",     english:"Hindi"},
+    {code:"bn", native:"বাংলা",      english:"Bengali"},
+    {code:"ta", native:"தமிழ்",      english:"Tamil"},
+    {code:"te", native:"తెలుగు",     english:"Telugu"},
+    {code:"mr", native:"मराठी",      english:"Marathi"},
+    {code:"gu", native:"ગુજરાતી",    english:"Gujarati"},
+    {code:"kn", native:"ಕನ್ನಡ",      english:"Kannada"}
+  ];
+
+  var SPEECH_LOCALE = {en:"en-IN", hi:"hi-IN", bn:"bn-IN", ta:"ta-IN", te:"te-IN", mr:"mr-IN", gu:"gu-IN", kn:"kn-IN"};
+
+  var I18N = {
+    en:{ chooseLang:"Choose your language", chooseLangSub:"Forecasts, alerts and answers to your questions — in the language you speak.", cont:"Continue",
+      whereTitle:"Where should we look?", whereSub:"Share your location for instant local forecasts, or type in a place.",
+      useLoc:"Use my current location", or:"or", cityPh:"Enter a city or village", findLoc:"Find location",
+      locating:"Getting your location…", locFound:"Found:", locNotFound:"Couldn't find that place — try another spelling.",
+      locDenied:"Location access was denied. Try entering a place name instead.", locUnsupported:"Your browser can't detect location — please type a place.",
+      changeLoc:"Change location", changeLang:"Change language", forecast:"5-day forecast", ask:"Ask WeatherGPT",
+      q1:"Will it rain tomorrow?", q2:"Any alerts near me?", q3:"Crop advisory for this week", q4:"Aviation weather briefing",
+      chatPh:"Type your question…", live:"Live ·", tollDesc:"No smartphone or data needed — call this number from any phone for weather updates and alerts spoken in your language.",
+      tollFreeLbl:"Toll-free · available 24×7", callDemo:"Try a voice call in this browser", dataNote:"Weather data refreshes automatically. Ask WeatherGPT anytime for details.",
+      alertTitle:"Weather alert active", alertSub:"Tap to see details in the chat", noAlertsChat:"There are no active weather alerts for your area right now.",
+      connecting:"Connecting…", callSub:"This simulates what a caller on the toll-free line hears.", tapToSpeak:"Tap the mic and speak",
+      listening:"Listening…", thinking:"WeatherGPT is replying…", speaking:"Speaking…", endedCall:"Call ended", realCallers:"Real callers dial",
+      settings:"Settings", feelsLike:"Feels like", humidity:"Humidity", wind:"Wind", greeting:"Hello! Ask me about today's weather, this week's forecast, or any alerts for your area."
+    },
+    hi:{ chooseLang:"अपनी भाषा चुनें", chooseLangSub:"मौसम की जानकारी, चेतावनियाँ और आपके सवालों के जवाब — आपकी अपनी भाषा में।", cont:"जारी रखें",
+      whereTitle:"स्थान बताएं", whereSub:"तुरंत जानकारी के लिए अपना स्थान साझा करें, या जगह का नाम टाइप करें।",
+      useLoc:"मेरा वर्तमान स्थान उपयोग करें", or:"या", cityPh:"शहर या गाँव दर्ज करें", findLoc:"स्थान खोजें",
+      locating:"स्थान प्राप्त किया जा रहा है…", locFound:"मिला:", locNotFound:"यह स्थान नहीं मिला — दूसरी वर्तनी आज़माएँ।",
+      locDenied:"स्थान की अनुमति नहीं मिली। कृपया जगह का नाम टाइप करें।", locUnsupported:"आपका ब्राउज़र स्थान नहीं पहचान सकता — कृपया जगह का नाम लिखें।",
+      changeLoc:"स्थान बदलें", changeLang:"भाषा बदलें", forecast:"5-दिन का पूर्वानुमान", ask:"WeatherGPT से पूछें",
+      q1:"क्या कल बारिश होगी?", q2:"मेरे पास कोई चेतावनी?", q3:"इस हफ़्ते की फ़सल सलाह", q4:"विमानन मौसम जानकारी",
+      chatPh:"अपना सवाल लिखें…", live:"लाइव ·", tollDesc:"स्मार्टफोन या डेटा की ज़रूरत नहीं — किसी भी फ़ोन से इस नंबर पर कॉल करें और मौसम की जानकारी अपनी भाषा में सुनें।",
+      tollFreeLbl:"टोल-फ्री · 24×7 उपलब्ध", callDemo:"इस ब्राउज़र में वॉइस कॉल आज़माएँ", dataNote:"मौसम डेटा अपने आप अपडेट होता है। किसी भी समय WeatherGPT से पूछें।",
+      alertTitle:"मौसम चेतावनी सक्रिय", alertSub:"विवरण के लिए चैट में टैप करें", noAlertsChat:"अभी आपके क्षेत्र के लिए कोई सक्रिय मौसम चेतावनी नहीं है।",
+      connecting:"कनेक्ट हो रहा है…", callSub:"यह वैसा ही अनुभव है जैसा टोल-फ्री लाइन पर कॉल करने वाले को मिलता है।", tapToSpeak:"माइक दबाएँ और बोलें",
+      listening:"सुन रहा है…", thinking:"WeatherGPT जवाब दे रहा है…", speaking:"बोल रहा है…", endedCall:"कॉल समाप्त", realCallers:"असली कॉलर डायल करें",
+      settings:"सेटिंग्स", feelsLike:"महसूस हो रहा है", humidity:"नमी", wind:"हवा", greeting:"नमस्ते! आज के मौसम, इस हफ़्ते के पूर्वानुमान या किसी चेतावनी के बारे में पूछें।"
+    },
+    bn:{ chooseLang:"আপনার ভাষা বেছে নিন", chooseLangSub:"আবহাওয়ার পূর্বাভাস, সতর্কতা এবং আপনার প্রশ্নের উত্তর — আপনার নিজের ভাষায়।", cont:"চালিয়ে যান",
+      whereTitle:"কোথাকার তথ্য দেখাব?", whereSub:"তাৎক্ষণিক পূর্বাভাসের জন্য অবস্থান শেয়ার করুন, বা জায়গার নাম লিখুন।",
+      useLoc:"আমার বর্তমান অবস্থান ব্যবহার করুন", or:"অথবা", cityPh:"শহর বা গ্রামের নাম লিখুন", findLoc:"অবস্থান খুঁজুন",
+      locating:"অবস্থান জানা হচ্ছে…", locFound:"পাওয়া গেছে:", locNotFound:"এই জায়গাটি পাওয়া যায়নি — অন্যভাবে লিখে দেখুন।",
+      locDenied:"অবস্থানের অনুমতি পাওয়া যায়নি। জায়গার নাম লিখুন।", locUnsupported:"আপনার ব্রাউজার অবস্থান শনাক্ত করতে পারছে না — জায়গার নাম লিখুন।",
+      changeLoc:"অবস্থান বদলান", changeLang:"ভাষা বদলান", forecast:"৫-দিনের পূর্বাভাস", ask:"WeatherGPT-কে জিজ্ঞাসা করুন",
+      q1:"কাল কি বৃষ্টি হবে?", q2:"আমার এলাকায় কোনো সতর্কতা?", q3:"এই সপ্তাহের ফসল পরামর্শ", q4:"বিমান চলাচল আবহাওয়া তথ্য",
+      chatPh:"আপনার প্রশ্ন লিখুন…", live:"লাইভ ·", tollDesc:"স্মার্টফোন বা ডেটার দরকার নেই — যেকোনো ফোন থেকে এই নম্বরে কল করে আপনার ভাষায় আবহাওয়ার তথ্য শুনুন।",
+      tollFreeLbl:"টোল-ফ্রি · ২৪×৭ উপলব্ধ", callDemo:"এই ব্রাউজারে ভয়েস কল চেষ্টা করুন", dataNote:"আবহাওয়ার তথ্য নিজে থেকেই আপডেট হয়। যেকোনো সময় WeatherGPT-কে জিজ্ঞাসা করুন।",
+      alertTitle:"আবহাওয়া সতর্কতা সক্রিয়", alertSub:"বিস্তারিত জানতে চ্যাটে ট্যাপ করুন", noAlertsChat:"এই মুহূর্তে আপনার এলাকার জন্য কোনো সক্রিয় সতর্কতা নেই।",
+      connecting:"সংযোগ হচ্ছে…", callSub:"টোল-ফ্রি লাইনে কল করা একজন কলার যা শোনেন, এটি তারই অনুরূপ।", tapToSpeak:"মাইক চেপে কথা বলুন",
+      listening:"শোনা হচ্ছে…", thinking:"WeatherGPT উত্তর দিচ্ছে…", speaking:"বলছে…", endedCall:"কল শেষ", realCallers:"আসল কলাররা ডায়াল করেন",
+      settings:"সেটিংস", feelsLike:"অনুভূত হচ্ছে", humidity:"আর্দ্রতা", wind:"বাতাস", greeting:"নমস্কার! আজকের আবহাওয়া, এই সপ্তাহের পূর্বাভাস বা কোনো সতর্কতা সম্পর্কে জিজ্ঞাসা করুন।"
+    },
+    ta:{ chooseLang:"உங்கள் மொழியைத் தேர்வுசெய்யவும்", chooseLangSub:"வானிலை முன்னறிவிப்பு, எச்சரிக்கைகள், உங்கள் கேள்விகளுக்கான பதில்கள் — உங்கள் மொழியில்.", cont:"தொடரவும்",
+      whereTitle:"எந்த இடத்தைக் காட்டுவது?", whereSub:"உடனடி முன்னறிவிப்புக்கு உங்கள் இருப்பிடத்தைப் பகிரவும், அல்லது இடத்தைத் தட்டச்சு செய்யவும்.",
+      useLoc:"என் தற்போதைய இருப்பிடத்தைப் பயன்படுத்து", or:"அல்லது", cityPh:"நகரம் அல்லது கிராமத்தை உள்ளிடவும்", findLoc:"இடத்தைக் கண்டறி",
+      locating:"இருப்பிடம் பெறப்படுகிறது…", locFound:"கிடைத்தது:", locNotFound:"இந்த இடம் கிடைக்கவில்லை — வேறு எழுத்துப்பிழையில் முயற்சிக்கவும்.",
+      locDenied:"இருப்பிட அனுமதி மறுக்கப்பட்டது. இட பெயரை உள்ளிடவும்.", locUnsupported:"உங்கள் உலாவி இருப்பிடத்தைக் கண்டறிய முடியவில்லை — இட பெயரை உள்ளிடவும்.",
+      changeLoc:"இருப்பிடத்தை மாற்று", changeLang:"மொழியை மாற்று", forecast:"5-நாள் முன்னறிவிப்பு", ask:"WeatherGPT-டிடம் கேளுங்கள்",
+      q1:"நாளை மழை பெய்யுமா?", q2:"என் பகுதியில் எச்சரிக்கை உள்ளதா?", q3:"இந்த வார பயிர் ஆலோசனை", q4:"விமான வானிலை தகவல்",
+      chatPh:"உங்கள் கேள்வியை தட்டச்சு செய்யவும்…", live:"நேரலை ·", tollDesc:"ஸ்மார்ட்போன் அல்லது டேட்டா தேவையில்லை — எந்த போனிலிருந்தும் இந்த எண்ணை அழைத்து உங்கள் மொழியில் வானிலை தகவலைக் கேளுங்கள்.",
+      tollFreeLbl:"கட்டணமில்லா · 24×7 கிடைக்கும்", callDemo:"இந்த உலாவியில் குரல் அழைப்பை முயற்சிக்கவும்", dataNote:"வானிலை தரவு தானாகவே புதுப்பிக்கப்படும். எப்போது வேண்டுமானாலும் WeatherGPT-டிடம் கேளுங்கள்.",
+      alertTitle:"வானிலை எச்சரிக்கை செயலில் உள்ளது", alertSub:"விவரங்களுக்கு அரட்டையில் தட்டவும்", noAlertsChat:"தற்போது உங்கள் பகுதிக்கு எந்த எச்சரிக்கையும் இல்லை.",
+      connecting:"இணைக்கப்படுகிறது…", callSub:"கட்டணமில்லா எண்ணை அழைப்பவர் கேட்பதை இது பிரதிபலிக்கிறது.", tapToSpeak:"மைக்கை அழுத்தி பேசுங்கள்",
+      listening:"கேட்கிறது…", thinking:"WeatherGPT பதிலளிக்கிறது…", speaking:"பேசுகிறது…", endedCall:"அழைப்பு முடிந்தது", realCallers:"உண்மையான அழைப்பாளர்கள் அழைக்கும் எண்",
+      settings:"அமைப்புகள்", feelsLike:"உணரும் வெப்பநிலை", humidity:"ஈரப்பதம்", wind:"காற்று", greeting:"வணக்கம்! இன்றைய வானிலை, இந்த வார முன்னறிவிப்பு அல்லது எச்சரிக்கைகள் பற்றி கேளுங்கள்."
+    },
+    te:{ chooseLang:"మీ భాషను ఎంచుకోండి", chooseLangSub:"వాతావరణ సమాచారం, హెచ్చరికలు, మీ ప్రశ్నలకు సమాధానాలు — మీ భాషలో.", cont:"కొనసాగించు",
+      whereTitle:"ఎక్కడి వివరాలు చూపించాలి?", whereSub:"తక్షణ సమాచారం కోసం మీ లొకేషన్‌ను షేర్ చేయండి, లేదా ప్రదేశం పేరు టైప్ చేయండి.",
+      useLoc:"నా ప్రస్తుత లొకేషన్ ఉపయోగించు", or:"లేదా", cityPh:"నగరం లేదా గ్రామం నమోదు చేయండి", findLoc:"లొకేషన్ కనుగొను",
+      locating:"లొకేషన్ పొందుతోంది…", locFound:"దొరికింది:", locNotFound:"ఈ ప్రదేశం దొరకలేదు — వేరే స్పెల్లింగ్‌తో ప్రయత్నించండి.",
+      locDenied:"లొకేషన్ అనుమతి తిరస్కరించబడింది. దయచేసి ప్రదేశం పేరు టైప్ చేయండి.", locUnsupported:"మీ బ్రౌజర్ లొకేషన్‌ను గుర్తించలేకపోతోంది — ప్రదేశం పేరు టైప్ చేయండి.",
+      changeLoc:"లొకేషన్ మార్చు", changeLang:"భాష మార్చు", forecast:"5-రోజుల సూచన", ask:"WeatherGPT ను అడగండి",
+      q1:"రేపు వర్షం పడుతుందా?", q2:"నా ప్రాంతంలో హెచ్చరికలు ఉన్నాయా?", q3:"ఈ వారం పంట సలహా", q4:"విమానయాన వాతావరణ సమాచారం",
+      chatPh:"మీ ప్రశ్న టైప్ చేయండి…", live:"లైవ్ ·", tollDesc:"స్మార్ట్‌ఫోన్ లేదా డేటా అవసరం లేదు — ఏ ఫోన్ నుండైనా ఈ నంబర్‌కు కాల్ చేసి మీ భాషలో వాతావరణ సమాచారం వినండి.",
+      tollFreeLbl:"టోల్-ఫ్రీ · 24×7 అందుబాటులో", callDemo:"ఈ బ్రౌజర్‌లో వాయిస్ కాల్ ప్రయత్నించండి", dataNote:"వాతావరణ డేటా స్వయంచాలకంగా అప్‌డేట్ అవుతుంది. ఎప్పుడైనా WeatherGPT ను అడగండి.",
+      alertTitle:"వాతావరణ హెచ్చరిక క్రియాశీలం", alertSub:"వివరాల కోసం చాట్‌లో నొక్కండి", noAlertsChat:"ప్రస్తుతం మీ ప్రాంతానికి క్రియాశీల హెచ్చరికలు లేవు.",
+      connecting:"కనెక్ట్ అవుతోంది…", callSub:"టోల్-ఫ్రీ లైన్‌కు కాల్ చేసే వ్యక్తి వినేదాన్ని ఇది అనుకరిస్తుంది.", tapToSpeak:"మైక్ నొక్కి మాట్లాడండి",
+      listening:"వింటోంది…", thinking:"WeatherGPT సమాధానం ఇస్తోంది…", speaking:"మాట్లాడుతోంది…", endedCall:"కాల్ ముగిసింది", realCallers:"నిజమైన కాలర్లు డయల్ చేసే నంబర్",
+      settings:"సెట్టింగ్‌లు", feelsLike:"అనుభూతి", humidity:"తేమ", wind:"గాలి", greeting:"నమస్కారం! ఈరోజు వాతావరణం, ఈ వారం సూచన లేదా హెచ్చరికల గురించి అడగండి."
+    },
+    mr:{ chooseLang:"तुमची भाषा निवडा", chooseLangSub:"हवामान अंदाज, इशारे आणि तुमच्या प्रश्नांची उत्तरे — तुमच्या भाषेत.", cont:"पुढे जा",
+      whereTitle:"कोणत्या ठिकाणाची माहिती हवी?", whereSub:"तात्काळ अंदाजासाठी तुमचे स्थान शेअर करा, किंवा ठिकाणाचे नाव टाइप करा.",
+      useLoc:"माझे सध्याचे स्थान वापरा", or:"किंवा", cityPh:"शहर किंवा गाव प्रविष्ट करा", findLoc:"स्थान शोधा",
+      locating:"स्थान मिळवत आहे…", locFound:"सापडले:", locNotFound:"हे ठिकाण सापडले नाही — वेगळी स्पेलिंग वापरून पहा.",
+      locDenied:"स्थान परवानगी नाकारली. कृपया ठिकाणाचे नाव टाइप करा.", locUnsupported:"तुमचा ब्राउझर स्थान ओळखू शकत नाही — कृपया ठिकाणाचे नाव लिहा.",
+      changeLoc:"स्थान बदला", changeLang:"भाषा बदला", forecast:"5-दिवसांचा अंदाज", ask:"WeatherGPT ला विचारा",
+      q1:"उद्या पाऊस पडेल का?", q2:"माझ्या भागात काही इशारा आहे का?", q3:"या आठवड्याचा पीक सल्ला", q4:"विमान वाहतूक हवामान माहिती",
+      chatPh:"तुमचा प्रश्न टाइप करा…", live:"लाइव्ह ·", tollDesc:"स्मार्टफोन किंवा डेटाची गरज नाही — कोणत्याही फोनवरून हा नंबर डायल करा आणि तुमच्या भाषेत हवामान माहिती ऐका.",
+      tollFreeLbl:"टोल-फ्री · 24×7 उपलब्ध", callDemo:"या ब्राउझरमध्ये व्हॉइस कॉल करून पहा", dataNote:"हवामान डेटा आपोआप अपडेट होतो. कधीही WeatherGPT ला विचारा.",
+      alertTitle:"हवामान इशारा सक्रिय", alertSub:"तपशीलांसाठी चॅटमध्ये टॅप करा", noAlertsChat:"सध्या तुमच्या भागासाठी कोणताही सक्रिय इशारा नाही.",
+      connecting:"जोडत आहे…", callSub:"टोल-फ्री लाइनवर कॉल करणाऱ्याला जे ऐकू येते तेच हे दाखवते.", tapToSpeak:"माइक दाबा आणि बोला",
+      listening:"ऐकत आहे…", thinking:"WeatherGPT उत्तर देत आहे…", speaking:"बोलत आहे…", endedCall:"कॉल संपला", realCallers:"खरे कॉलर डायल करतात",
+      settings:"सेटिंग्ज", feelsLike:"जाणवते", humidity:"आर्द्रता", wind:"वारा", greeting:"नमस्कार! आजचे हवामान, या आठवड्याचा अंदाज किंवा इशाऱ्यांबद्दल विचारा."
+    },
+    gu:{ chooseLang:"તમારી ભાષા પસંદ કરો", chooseLangSub:"હવામાન આગાહી, ચેતવણીઓ અને તમારા પ્રશ્નોના જવાબ — તમારી ભાષામાં.", cont:"ચાલુ રાખો",
+      whereTitle:"કયા સ્થળની માહિતી બતાવીએ?", whereSub:"તાત્કાલિક આગાહી માટે તમારું સ્થાન શેર કરો, અથવા સ્થળનું નામ ટાઈપ કરો.",
+      useLoc:"મારું હાલનું સ્થાન વાપરો", or:"અથવા", cityPh:"શહેર અથવા ગામ દાખલ કરો", findLoc:"સ્થાન શોધો",
+      locating:"સ્થાન મેળવી રહ્યા છીએ…", locFound:"મળ્યું:", locNotFound:"આ સ્થળ મળ્યું નથી — બીજી જોડણી અજમાવો.",
+      locDenied:"સ્થાનની પરવાનગી નકારાઈ. કૃપા કરી સ્થળનું નામ ટાઈપ કરો.", locUnsupported:"તમારું બ્રાઉઝર સ્થાન શોધી શકતું નથી — કૃપા કરી સ્થળનું નામ લખો.",
+      changeLoc:"સ્થાન બદલો", changeLang:"ભાષા બદલો", forecast:"5-દિવસની આગાહી", ask:"WeatherGPT ને પૂછો",
+      q1:"શું કાલે વરસાદ પડશે?", q2:"મારા વિસ્તારમાં કોઈ ચેતવણી છે?", q3:"આ અઠવાડિયાની પાક સલાહ", q4:"ઉડ્ડયન હવામાન માહિતી",
+      chatPh:"તમારો પ્રશ્ન ટાઈપ કરો…", live:"લાઇવ ·", tollDesc:"સ્માર્ટફોન કે ડેટાની જરૂર નથી — કોઈપણ ફોનથી આ નંબર પર કૉલ કરો અને તમારી ભાષામાં હવામાન માહિતી સાંભળો.",
+      tollFreeLbl:"ટોલ-ફ્રી · 24×7 ઉપલબ્ધ", callDemo:"આ બ્રાઉઝરમાં વૉઇસ કૉલ અજમાવો", dataNote:"હવામાન ડેટા આપમેળે અપડેટ થાય છે. કોઈપણ સમયે WeatherGPT ને પૂછો.",
+      alertTitle:"હવામાન ચેતવણી સક્રિય", alertSub:"વિગતો માટે ચેટમાં ટૅપ કરો", noAlertsChat:"હાલમાં તમારા વિસ્તાર માટે કોઈ સક્રિય ચેતવણી નથી.",
+      connecting:"જોડાઈ રહ્યું છે…", callSub:"ટોલ-ફ્રી લાઇન પર કૉલ કરનારને જે સંભળાય છે તે જ આ બતાવે છે.", tapToSpeak:"માઇક દબાવો અને બોલો",
+      listening:"સાંભળી રહ્યું છે…", thinking:"WeatherGPT જવાબ આપી રહ્યું છે…", speaking:"બોલી રહ્યું છે…", endedCall:"કૉલ સમાપ્ત", realCallers:"સાચા કૉલર્સ ડાયલ કરે છે",
+      settings:"સેટિંગ્સ", feelsLike:"અનુભવાય છે", humidity:"ભેજ", wind:"પવન", greeting:"નમસ્તે! આજના હવામાન, આ અઠવાડિયાની આગાહી અથવા ચેતવણીઓ વિશે પૂછો."
+    },
+    kn:{ chooseLang:"ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆರಿಸಿ", chooseLangSub:"ಹವಾಮಾನ ಮುನ್ಸೂಚನೆ, ಎಚ್ಚರಿಕೆಗಳು ಮತ್ತು ನಿಮ್ಮ ಪ್ರಶ್ನೆಗಳಿಗೆ ಉತ್ತರಗಳು — ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ.", cont:"ಮುಂದುವರಿಸಿ",
+      whereTitle:"ಯಾವ ಸ್ಥಳ ತೋರಿಸೋಣ?", whereSub:"ತಕ್ಷಣದ ಮುನ್ಸೂಚನೆಗಾಗಿ ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ಹಂಚಿಕೊಳ್ಳಿ, ಅಥವಾ ಸ್ಥಳದ ಹೆಸರನ್ನು ಟೈಪ್ ಮಾಡಿ.",
+      useLoc:"ನನ್ನ ಪ್ರಸ್ತುತ ಸ್ಥಳ ಬಳಸಿ", or:"ಅಥವಾ", cityPh:"ನಗರ ಅಥವಾ ಗ್ರಾಮ ನಮೂದಿಸಿ", findLoc:"ಸ್ಥಳ ಹುಡುಕಿ",
+      locating:"ಸ್ಥಳ ಪಡೆಯಲಾಗುತ್ತಿದೆ…", locFound:"ಸಿಕ್ಕಿತು:", locNotFound:"ಈ ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ — ಬೇರೆ ಕಾಗುಣಿತ ಪ್ರಯತ್ನಿಸಿ.",
+      locDenied:"ಸ್ಥಳದ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ಸ್ಥಳದ ಹೆಸರನ್ನು ಟೈಪ್ ಮಾಡಿ.", locUnsupported:"ನಿಮ್ಮ ಬ್ರೌಸರ್ ಸ್ಥಳ ಪತ್ತೆ ಮಾಡಲಾಗುತ್ತಿಲ್ಲ — ಸ್ಥಳದ ಹೆಸರನ್ನು ಬರೆಯಿರಿ.",
+      changeLoc:"ಸ್ಥಳ ಬದಲಿಸಿ", changeLang:"ಭಾಷೆ ಬದಲಿಸಿ", forecast:"5-ದಿನಗಳ ಮುನ್ಸೂಚನೆ", ask:"WeatherGPT ಅನ್ನು ಕೇಳಿ",
+      q1:"ನಾಳೆ ಮಳೆ ಬರುತ್ತದೆಯೇ?", q2:"ನನ್ನ ಪ್ರದೇಶದಲ್ಲಿ ಎಚ್ಚರಿಕೆ ಇದೆಯೇ?", q3:"ಈ ವಾರದ ಬೆಳೆ ಸಲಹೆ", q4:"ವಿಮಾನಯಾನ ಹವಾಮಾನ ಮಾಹಿತಿ",
+      chatPh:"ನಿಮ್ಮ ಪ್ರಶ್ನೆ ಟೈಪ್ ಮಾಡಿ…", live:"ಲೈವ್ ·", tollDesc:"ಸ್ಮಾರ್ಟ್‌ಫೋನ್ ಅಥವಾ ಡೇಟಾ ಅಗತ್ಯವಿಲ್ಲ — ಯಾವುದೇ ಫೋನ್‌ನಿಂದ ಈ ಸಂಖ್ಯೆಗೆ ಕರೆ ಮಾಡಿ ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ ಹವಾಮಾನ ಮಾಹಿತಿ ಪಡೆಯಿರಿ.",
+      tollFreeLbl:"ಟೋಲ್-ಫ್ರೀ · 24×7 ಲಭ್ಯ", callDemo:"ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಧ್ವನಿ ಕರೆ ಪ್ರಯತ್ನಿಸಿ", dataNote:"ಹವಾಮಾನ ಡೇಟಾ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಅಪ್‌ಡೇಟ್ ಆಗುತ್ತದೆ. ಯಾವಾಗ ಬೇಕಾದರೂ WeatherGPT ಅನ್ನು ಕೇಳಿ.",
+      alertTitle:"ಹವಾಮಾನ ಎಚ್ಚರಿಕೆ ಸಕ್ರಿಯ", alertSub:"ವಿವರಗಳಿಗಾಗಿ ಚಾಟ್‌ನಲ್ಲಿ ಟ್ಯಾಪ್ ಮಾಡಿ", noAlertsChat:"ಪ್ರಸ್ತುತ ನಿಮ್ಮ ಪ್ರದೇಶಕ್ಕೆ ಯಾವುದೇ ಸಕ್ರಿಯ ಎಚ್ಚರಿಕೆ ಇಲ್ಲ.",
+      connecting:"ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ…", callSub:"ಟೋಲ್-ಫ್ರೀ ಲೈನ್‌ಗೆ ಕರೆ ಮಾಡುವವರು ಕೇಳುವುದನ್ನು ಇದು ಅನುಕರಿಸುತ್ತದೆ.", tapToSpeak:"ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ",
+      listening:"ಕೇಳುತ್ತಿದೆ…", thinking:"WeatherGPT ಉತ್ತರಿಸುತ್ತಿದೆ…", speaking:"ಮಾತನಾಡುತ್ತಿದೆ…", endedCall:"ಕರೆ ಮುಗಿಯಿತು", realCallers:"ನಿಜವಾದ ಕರೆದಾರರು ಡಯಲ್ ಮಾಡುವ ಸಂಖ್ಯೆ",
+      settings:"ಸೆಟ್ಟಿಂಗ್‌ಗಳು", feelsLike:"ಅನುಭವ", humidity:"ಆರ್ದ್ರತೆ", wind:"ಗಾಳಿ", greeting:"ನಮಸ್ಕಾರ! ಇಂದಿನ ಹವಾಮಾನ, ಈ ವಾರದ ಮುನ್ಸೂಚನೆ ಅಥವಾ ಎಚ್ಚರಿಕೆಗಳ ಬಗ್ಗೆ ಕೇಳಿ."
+    }
+  };
+
+  function t(key){
+    var lang = state.lang || "en";
+    return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
+  }
+
+  /* =========================================================
+     STATE
+  ========================================================= */
+  var state = {
+    lang: localStorage.getItem("wg_lang") || null,
+    locName: localStorage.getItem("wg_locName") || null,
+    lat: parseFloat(localStorage.getItem("wg_lat")) || null,
+    lon: parseFloat(localStorage.getItem("wg_lon")) || null,
+    sessionId: localStorage.getItem("wg_session") || null,
+    speakerOn: localStorage.getItem("wg_speaker") === "1"
+  };
+  if (!state.sessionId){
+    state.sessionId = "web-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem("wg_session", state.sessionId);
+  }
+
+  var CONDITION_ICON = {
+    Clear:"☀️", Clouds:"⛅", Rain:"🌧️", Drizzle:"🌦️", Thunderstorm:"⛈️",
+    Snow:"❄️", Mist:"🌫️", Smoke:"🌫️", Haze:"🌫️", Dust:"🌫️", Fog:"🌫️", Tornado:"🌪️"
+  };
+
+  /* =========================================================
+     API layer — matches routers/chat.py + routers/weather.py
+  ========================================================= */
+  var Api = {
+    base: API_BASE,
+    async currentWeather(params){
+  var qs = new URLSearchParams(params).toString();
+
+  var controller = new AbortController();
+  var timeout = setTimeout(function(){
+    controller.abort();
+  }, 10000);
+
+  try {
+    var r = await fetch(
+      this.base + "/api/weather/current?" + qs,
+      { signal: controller.signal }
+    );
+
+    if (!r.ok) {
+      throw new Error("current_weather_failed:" + r.status);
+    }
+
+    return await r.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+},
+    async forecast(params){
+      var qs = new URLSearchParams(params).toString();
+      var r = await fetch(this.base + "/api/weather/forecast?" + qs);
+      if (!r.ok) throw new Error("forecast_failed:" + r.status);
+      return r.json();
+    },
+    async alerts(params){
+      var qs = new URLSearchParams(params).toString();
+      var r = await fetch(this.base + "/api/weather/alerts?" + qs);
+      if (!r.ok) throw new Error("alerts_failed:" + r.status);
+      return r.json();
+    },
+    async chat(payload){
+      var r = await fetch(this.base + "/api/chat", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!r.ok) throw new Error("chat_failed:" + r.status);
+      return r.json();
+    }
+  };
+
+  /* Demo fallback data, used only if the live backend can't be reached —
+     e.g. when previewing this file without the FastAPI server running. */
+  function demoCurrent(){
+    return { location: state.locName || "Demo City", latitude: state.lat||0, longitude: state.lon||0,
+      temperature_c: 29.4, feels_like_c: 32.1, humidity: 68, wind_speed_ms: 3.6,
+      condition:"Clouds", description:"scattered clouds", observed_at:new Date().toISOString(), _demo:true };
+  }
+  function demoForecast(){
+    var days=[], now=Date.now();
+    var conds=["Clear","Clouds","Rain","Clouds","Clear"];
+    for (var i=0;i<5;i++){
+      days.push({ datetime: new Date(now+i*86400000).toISOString(), temperature_c: 27+i%3, condition:conds[i], description:conds[i], pop:[0.1,0.2,0.6,0.3,0.05][i] });
+    }
+    return { location: state.locName||"Demo City", latitude:0, longitude:0, daily: days, _demo:true };
+  }
+  function demoAlerts(){ return { location: state.locName||"Demo City", alerts: [], _demo:true }; }
+
+  /* =========================================================
+     SPEECH — Web Speech API (client-side STT + TTS).
+     The backend's README lists Whisper-based voice as a future
+     step; until then this gives full voice interaction in the
+     browser without any backend change.
+  ========================================================= */
+  var Speech = {
+    recognition: null,
+    supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+    ttsSupported: !!window.speechSynthesis,
+    startListening: function(lang, onResult, onEnd, onStart){
+      if (!this.supported) { onEnd && onEnd("unsupported"); return; }
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var rec = new SR();
+      rec.lang = SPEECH_LOCALE[lang] || "en-IN";
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onstart = function(){ onStart && onStart(); };
+      rec.onresult = function(e){
+        var text = e.results[0][0].transcript;
+        onResult && onResult(text);
+      };
+      rec.onerror = function(e){ onEnd && onEnd(e.error); };
+      rec.onend = function(){ onEnd && onEnd(null); };
+      this.recognition = rec;
+      try { rec.start(); } catch(e){ onEnd && onEnd("start_failed"); }
+    },
+    stopListening: function(){
+      if (this.recognition) { try { this.recognition.stop(); } catch(e){} }
+    },
+    speak: function(text, lang, onEnd){
+      if (!this.ttsSupported) { onEnd && onEnd(); return; }
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = SPEECH_LOCALE[lang] || "en-IN";
+      u.rate = 0.98;
+      u.onend = function(){ onEnd && onEnd(); };
+      u.onerror = function(){ onEnd && onEnd(); };
+      window.speechSynthesis.speak(u);
+    },
+    stopSpeaking: function(){ if (this.ttsSupported) window.speechSynthesis.cancel(); }
+  };
+
+  /* =========================================================
+     DOM refs
+  ========================================================= */
+  var $ = function(id){ return document.getElementById(id); };
+
+  var screens = { language:$("screen-language"), location:$("screen-location"), dashboard:$("screen-dashboard") };
+  function showScreen(name){
+    Object.keys(screens).forEach(function(k){ screens[k].classList.toggle("active", k===name); });
+  }
+
+  /* ---------------- Language screen ---------------- */
+  var langGrid = $("lang-grid");
+  var selectedLang = state.lang;
+  LANGS.forEach(function(l){
+    var b = document.createElement("button");
+    b.className = "lang-btn" + (l.code===selectedLang ? " selected":"");
+    b.setAttribute("data-code", l.code);
+    b.innerHTML = '<span class="lang-native">'+l.native+'</span><span class="lang-english">'+l.english+'</span>';
+    b.addEventListener("click", function(){
+      selectedLang = l.code;
+      Array.prototype.forEach.call(langGrid.children, function(c){ c.classList.remove("selected"); });
+      b.classList.add("selected");
+      $("btn-lang-continue").disabled = false;
+      applyLangStrings();
+    });
+    langGrid.appendChild(b);
+  });
+
+  function applyLangStrings(){
+    var lang = selectedLang || "en";
+    var saved = state.lang; state.lang = lang; // temp for t()
+    $("lang-title").textContent = t("chooseLang");
+    $("lang-sub").textContent = t("chooseLangSub");
+    $("btn-lang-continue-text").textContent = t("cont");
+    $("loc-title").textContent = t("whereTitle");
+    $("loc-sub").textContent = t("whereSub");
+    $("btn-use-location-text").textContent = t("useLoc");
+    $("loc-divider").textContent = t("or");
+    $("input-city").placeholder = t("cityPh");
+    $("btn-find-city-text").textContent = t("findLoc");
+    $("btn-loc-continue-text").textContent = t("cont");
+    state.lang = saved;
+  }
+  applyLangStrings();
+
+  $("btn-lang-continue").addEventListener("click", function(){
+    if (!selectedLang) return;
+    state.lang = selectedLang;
+    localStorage.setItem("wg_lang", selectedLang);
+    applyLangStrings();
+    if (state.locName && state.lat!=null){
+      renderDashboardChrome();
+      showScreen("dashboard");
+      loadWeather();
+    } else {
+      showScreen("location");
+    }
+  });
+
+  /* ---------------- Location screen ---------------- */
+  var pendingLoc = null;
+
+  function setLocStatus(msg, isError){
+    var el = $("loc-status");
+    el.className = "status-line" + (isError ? " error":"");
+    el.innerHTML = msg ? msg : "";
+  }
+
+  $("btn-use-location").addEventListener("click", function(){
+    if (!navigator.geolocation){
+      setLocStatus(t("locUnsupported"), true);
+      return;
+    }
+    setLocStatus('<span class="dot-pulse"></span>' + t("locating"));
+    navigator.geolocation.getCurrentPosition(async function(pos){
+      var lat = pos.coords.latitude, lon = pos.coords.longitude;
+      try{
+        var data = await Api.currentWeather({ lat: lat, lon: lon });
+        pendingLoc = { lat: lat, lon: lon, name: data.location };
+        showLocSuggestion(data.location);
+        setLocStatus("");
+      }catch(e){
+        pendingLoc = { lat: lat, lon: lon, name: null };
+        showLocSuggestion(lat.toFixed(2) + ", " + lon.toFixed(2));
+        setLocStatus("");
+      }
+    }, function(err){
+  if (err.code === 1) {
+    setLocStatus("Location permission was denied. Please allow location access.", true);
+  } else if (err.code === 2) {
+    setLocStatus("Unable to detect your location. Try entering your city instead.", true);
+  } else if (err.code === 3) {
+    setLocStatus("Location request timed out. Try again.", true);
+  } else {
+    setLocStatus("Could not detect your location. Try entering your city.", true);
+  }
+}, {
+  enableHighAccuracy: false,
+  timeout: 8000,
+  maximumAge: 300000
+});
+  });
+
+  $("btn-find-city").addEventListener("click", async function(){
+    var city = $("input-city").value.trim();
+    if (!city) return;
+    setLocStatus('<span class="dot-pulse"></span>' + t("locating"));
+    $("loc-suggestion").classList.add("hidden");
+    try{
+      var data = await Api.currentWeather({ city: city });
+      pendingLoc = { lat: data.latitude, lon: data.longitude, name: data.location };
+      showLocSuggestion(data.location);
+      setLocStatus("");
+    }catch(e){
+      setLocStatus(t("locNotFound"), true);
+    }
+  });
+
+  function showLocSuggestion(name){
+    var el = $("loc-suggestion");
+    el.innerHTML = '<span>'+ t("locFound") +' <b>'+ escapeHtml(name) +'</b></span>' +
+      '<svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;color:#3F8F5F;"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    el.classList.remove("hidden");
+    $("btn-loc-continue").classList.remove("hidden");
+  }
+
+  $("btn-loc-continue").addEventListener("click", function(){
+    if (!pendingLoc) return;
+    state.lat = pendingLoc.lat; state.lon = pendingLoc.lon; state.locName = pendingLoc.name || "";
+    localStorage.setItem("wg_lat", state.lat);
+    localStorage.setItem("wg_lon", state.lon);
+    localStorage.setItem("wg_locName", state.locName);
+    renderDashboardChrome();
+    showScreen("dashboard");
+    loadWeather();
+  });
+
+  /* ---------------- Dashboard ---------------- */
+  function renderDashboardChrome(){
+    $("pill-location-text").textContent = state.locName || "—";
+    $("pill-lang-text").textContent = (state.lang||"en").toUpperCase();
+    $("label-forecast").textContent = t("forecast");
+    $("label-ask").textContent = t("ask");
+    $("toll-label-line").textContent = t("tollFreeLbl");
+    $("toll-desc").textContent = t("tollDesc");
+    $("btn-call-demo-text").textContent = t("callDemo");
+    $("data-note").textContent = t("dataNote");
+    $("alert-title").textContent = t("alertTitle");
+    $("alert-sub").textContent = t("alertSub");
+    $("call-tollnum").textContent = t("realCallers") + " 1800-XXX-XXXX";
+
+    var chipRow = $("chip-row");
+    chipRow.innerHTML = "";
+    [t("q1"), t("q2"), t("q3"), t("q4")].forEach(function(q){
+      var c = document.createElement("button");
+      c.className = "chip"; c.textContent = q;
+      c.addEventListener("click", function(){ openChat(); sendMessage(q); });
+      chipRow.appendChild(c);
+    });
+  }
+
+  async function loadWeather(){
+    var params = { lat: state.lat, lon: state.lon };
+    // Current
+    try{
+      var cur = await Api.currentWeather(params);
+      renderHero(cur);
+    }catch(e){ renderHero(demoCurrent()); }
+    // Forecast
+    try{
+      var fc = await Api.forecast(Object.assign({days:5}, params));
+      renderForecast(fc);
+    }catch(e){ renderForecast(demoForecast()); }
+    // Alerts
+    try{
+      var al = await Api.alerts(params);
+      renderAlerts(al);
+    }catch(e){ renderAlerts(demoAlerts()); }
+  }
+
+  function renderHero(d){
+    $("hero-loc").querySelector("span").textContent = d.location || state.locName || "—";
+    $("hero-cond").textContent = d.description || d.condition || "";
+    $("hero-icon").textContent = CONDITION_ICON[d.condition] || "🌤️";
+    $("hero-temp").innerHTML = Math.round(d.temperature_c) + '<sup>°C</sup>';
+    $("hero-feels").innerHTML = t("feelsLike") + '<b>' + Math.round(d.feels_like_c) + '°</b>';
+    $("hero-humidity").innerHTML = t("humidity") + '<b>' + d.humidity + '%</b>';
+    $("hero-wind").innerHTML = t("wind") + '<b>' + d.wind_speed_ms + ' m/s</b>';
+  }
+
+  function renderForecast(d){
+    var strip = $("forecast-strip");
+    strip.innerHTML = "";
+    var dayFmt = new Intl.DateTimeFormat(undefined, { weekday:"short" });
+    (d.daily||[]).forEach(function(entry){
+      var dt = new Date(entry.datetime);
+      var card = document.createElement("div");
+      card.className = "forecast-card";
+      card.innerHTML =
+        '<div class="forecast-day">' + dayFmt.format(dt) + '</div>' +
+        '<div class="forecast-ic">' + (CONDITION_ICON[entry.condition] || "🌤️") + '</div>' +
+        '<div class="forecast-temp">' + Math.round(entry.temperature_c) + '°</div>' +
+        '<div class="forecast-pop">' + Math.round((entry.pop||0)*100) + '%</div>';
+      strip.appendChild(card);
+    });
+  }
+
+  function renderAlerts(d){
+    var banner = $("alert-banner");
+    var alerts = d.alerts || [];
+    if (alerts.length > 0){
+      banner.classList.add("show");
+      $("alert-title").textContent = alerts[0].event || t("alertTitle");
+      $("alert-sub").textContent = (alerts[0].severity ? alerts[0].severity + " · " : "") + t("alertSub");
+      banner.onclick = function(){ openChat(); sendMessage(t("q2")); };
+    } else {
+      banner.classList.remove("show");
+    }
+  }
+
+  /* pills open the settings sheet to switch language / location */
+  var sheetBackdrop = $("sheet-backdrop");
+  function openSheet(kind){
+    $("sheet-title").textContent = kind==="lang" ? t("changeLang") : t("changeLoc");
+    var content = $("sheet-content");
+    content.innerHTML = "";
+    if (kind === "lang"){
+      var grid = document.createElement("div");
+      grid.className = "lang-grid";
+      LANGS.forEach(function(l){
+        var b = document.createElement("button");
+        b.className = "lang-btn" + (l.code===state.lang ? " selected":"");
+        b.innerHTML = '<span class="lang-native">'+l.native+'</span><span class="lang-english">'+l.english+'</span>';
+        b.addEventListener("click", function(){
+          state.lang = l.code;
+          localStorage.setItem("wg_lang", l.code);
+          applyLangStrings();
+          renderDashboardChrome();
+          closeSheet();
+        });
+        grid.appendChild(b);
+      });
+      content.appendChild(grid);
+    } else {
+      var wrap = document.createElement("div");
+      wrap.innerHTML =
+        '<button class="btn-primary" id="sheet-use-loc">'+ t("useLoc") +'</button>' +
+        '<div class="field-row" style="margin-top:14px;"><input class="text-field" id="sheet-city" type="text" placeholder="'+ t("cityPh") +'"/></div>' +
+        '<button class="btn-secondary" id="sheet-find-city">'+ t("findLoc") +'</button>' +
+        '<div class="status-line" id="sheet-status"></div>';
+      content.appendChild(wrap);
+      $("sheet-use-loc").addEventListener("click", function(){
+        if (!navigator.geolocation) return;
+        $("sheet-status").textContent = t("locating");
+        navigator.geolocation.getCurrentPosition(async function(pos){
+          try{
+            var data = await Api.currentWeather({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+            state.lat = pos.coords.latitude; state.lon = pos.coords.longitude; state.locName = data.location;
+          }catch(e){
+            state.lat = pos.coords.latitude; state.lon = pos.coords.longitude; state.locName = state.lat.toFixed(2)+","+state.lon.toFixed(2);
+          }
+          persistLocAndRefresh();
+        }, function(){ $("sheet-status").textContent = t("locDenied"); });
+      });
+      $("sheet-find-city").addEventListener("click", async function(){
+        var city = $("sheet-city").value.trim();
+        if (!city) return;
+        $("sheet-status").textContent = t("locating");
+        try{
+          var data = await Api.currentWeather({ city: city });
+          state.lat = data.latitude; state.lon = data.longitude; state.locName = data.location;
+          persistLocAndRefresh();
+        }catch(e){ $("sheet-status").textContent = t("locNotFound"); }
+      });
+    }
+    sheetBackdrop.classList.add("open");
+  }
+  function persistLocAndRefresh(){
+    localStorage.setItem("wg_lat", state.lat);
+    localStorage.setItem("wg_lon", state.lon);
+    localStorage.setItem("wg_locName", state.locName);
+    renderDashboardChrome();
+    closeSheet();
+    loadWeather();
+  }
+  function closeSheet(){ sheetBackdrop.classList.remove("open"); }
+  sheetBackdrop.addEventListener("click", function(e){ if (e.target===sheetBackdrop) closeSheet(); });
+  $("pill-location").addEventListener("click", function(){ openSheet("loc"); });
+  $("pill-lang").addEventListener("click", function(){ openSheet("lang"); });
+
+  /* ---------------- Chat overlay ---------------- */
+  var chatOverlay = $("overlay-chat");
+  var chatScroll = $("chat-scroll");
+  var chatOpened = false;
+  var micActive = false;
+
+  function openChat(){
+    chatOverlay.classList.add("open");
+    $("chat-live-text").textContent = t("live") + " " + (state.locName||"");
+    if (!chatOpened){
+      addMsg("bot", t("greeting"));
+      chatOpened = true;
+    }
+  }
+  $("fab-chat").addEventListener("click", openChat);
+  $("btn-close-chat").addEventListener("click", function(){ chatOverlay.classList.remove("open"); Speech.stopListening(); });
+
+  $("btn-speaker").addEventListener("click", function(){
+    state.speakerOn = !state.speakerOn;
+    localStorage.setItem("wg_speaker", state.speakerOn ? "1":"0");
+    $("btn-speaker").style.background = state.speakerOn ? "var(--primary-tint)" : "";
+    $("btn-speaker").style.borderColor = state.speakerOn ? "var(--primary)" : "";
+    if (!state.speakerOn) Speech.stopSpeaking();
+  });
+  if (state.speakerOn){ $("btn-speaker").style.background="var(--primary-tint)"; $("btn-speaker").style.borderColor="var(--primary)"; }
+
+  function addMsg(role, text){
+    var div = document.createElement("div");
+    div.className = "msg " + role;
+    div.textContent = text;
+    chatScroll.appendChild(div);
+    chatScroll.scrollTop = chatScroll.scrollHeight;
+    return div;
+  }
+  function addTyping(){
+    var div = document.createElement("div");
+    div.className = "msg bot typing";
+    div.innerHTML = "<span></span><span></span><span></span>";
+    chatScroll.appendChild(div);
+    chatScroll.scrollTop = chatScroll.scrollHeight;
+    return div;
+  }
+
+  async function sendMessage(text){
+    if (!text) return;
+    addMsg("user", text);
+    $("chat-input").value = "";
+    var typing = addTyping();
+    try{
+      var res = await Api.chat({
+        session_id: state.sessionId,
+        message: text,
+        language: state.lang || "en",
+        latitude: state.lat,
+        longitude: state.lon
+      });
+      typing.remove();
+      addMsg("bot", res.reply);
+      if (state.speakerOn) Speech.speak(res.reply, state.lang);
+    }catch(e){
+      typing.remove();
+      addMsg("bot", t("noAlertsChat").indexOf("no")>=0 ? errorReplyForLang() : errorReplyForLang());
+    }
+  }
+  function errorReplyForLang(){
+    // Small inline fallback so the UI still feels alive without a live backend.
+    var msg = {
+      en:"I couldn't reach the weather service just now — please check the backend is running and try again.",
+      hi:"अभी मौसम सेवा तक नहीं पहुँच सका — कृपया बैकएंड चालू होने की जाँच करें और फिर कोशिश करें।"
+    };
+    return msg[state.lang] || msg.en;
+  }
+
+  $("btn-send").addEventListener("click", function(){ sendMessage($("chat-input").value.trim()); });
+  $("chat-input").addEventListener("keydown", function(e){ if (e.key==="Enter") sendMessage($("chat-input").value.trim()); });
+
+  $("btn-mic").addEventListener("click", function(){
+    if (micActive){ Speech.stopListening(); return; }
+    if (!Speech.supported){
+      addMsg("bot", state.lang==="hi" ? "इस ब्राउज़र में आवाज़ पहचान उपलब्ध नहीं है।" : "Voice input isn't supported in this browser.");
+      return;
+    }
+    micActive = true;
+    $("btn-mic").classList.add("on");
+    $("chat-input").placeholder = t("listening");
+    Speech.startListening(state.lang, function(text){
+      $("chat-input").value = text;
+    }, function(){
+      micActive = false;
+      $("btn-mic").classList.remove("on");
+      $("chat-input").placeholder = t("chatPh");
+      var val = $("chat-input").value.trim();
+      if (val) sendMessage(val);
+    });
+  });
+
+  /* ---------------- Call overlay (toll-free demo) ---------------- */
+  var callOverlay = $("overlay-call");
+  var callState = "idle"; // idle -> connecting -> listening -> thinking -> speaking
+
+  $("btn-call-demo").addEventListener("click", function(){
+    callOverlay.classList.add("open");
+    $("call-transcript").textContent = "";
+    setCallState("connecting");
+    setTimeout(function(){ setCallState("idle_ready"); }, 1100);
+  });
+  $("btn-end-call").addEventListener("click", endCall);
+
+  function endCall(){
+    Speech.stopListening();
+    Speech.stopSpeaking();
+    callOverlay.classList.remove("open");
+    callState = "idle";
+  }
+
+  function setCallState(s){
+    callState = s;
+    var orb = $("call-orb");
+    orb.classList.remove("listening");
+    if (s === "connecting"){
+      $("call-status").textContent = t("connecting");
+      $("call-sub").textContent = t("callSub");
+    } else if (s === "idle_ready"){
+      $("call-status").textContent = t("tapToSpeak");
+      $("call-sub").textContent = state.locName || "";
+    } else if (s === "listening"){
+      $("call-status").textContent = t("listening");
+      orb.classList.add("listening");
+    } else if (s === "thinking"){
+      $("call-status").textContent = t("thinking");
+    } else if (s === "speaking"){
+      $("call-status").textContent = t("speaking");
+    }
+  }
+
+  $("call-orb").addEventListener("click", function(){
+    if (callState === "listening"){ Speech.stopListening(); return; }
+    if (callState === "thinking" || callState === "speaking") return;
+    if (!Speech.supported){
+      $("call-transcript").textContent = state.lang==="hi" ? "इस ब्राउज़र में आवाज़ पहचान उपलब्ध नहीं है।" : "Voice input isn't supported in this browser.";
+      return;
+    }
+    setCallState("listening");
+    Speech.startListening(state.lang, async function(text){
+      $("call-transcript").textContent = "\u201C" + text + "\u201D";
+      setCallState("thinking");
+      try{
+        var res = await Api.chat({
+          session_id: state.sessionId + "-call",
+          message: text,
+          language: state.lang || "en",
+          latitude: state.lat,
+          longitude: state.lon
+        });
+        setCallState("speaking");
+        $("call-transcript").textContent = res.reply;
+        Speech.speak(res.reply, state.lang, function(){
+          if (callOverlay.classList.contains("open")) setCallState("idle_ready");
+        });
+      }catch(e){
+        setCallState("idle_ready");
+        $("call-transcript").textContent = errorReplyForLang();
+      }
+    }, function(err){
+      if (callState === "listening") setCallState("idle_ready");
+    });
+  });
+
+  /* ---------------- utils ---------------- */
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  /* =========================================================
+     BOOT
+  ========================================================= */
+  (function boot(){
+    if (state.lang && state.locName && state.lat!=null){
+      applyLangStrings();
+      renderDashboardChrome();
+      showScreen("dashboard");
+      loadWeather();
+    } else if (state.lang){
+      applyLangStrings();
+      showScreen("location");
+    } else {
+      showScreen("language");
+    }
+  })();
+
+})();
+</script>
+</body>
+</html>
