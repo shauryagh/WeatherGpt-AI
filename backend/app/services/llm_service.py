@@ -67,7 +67,8 @@ async def understand_query(message: str) -> dict:
         temperature=0,
         response_format={"type": "json_object"},
     )
-    return json.loads(resp.choices[0].message.content)
+    print("OPENROUTER RAW RESPONSE:", repr(resp.choices[0].message.content))
+return json.loads(resp.choices[0].message.content)
 
 
 async def generate_reply(user_message: str, intent: str, weather_data: Optional[dict], language: str) -> str:
